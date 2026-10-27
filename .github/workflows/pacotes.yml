@@ -3,8 +3,9 @@ name: Pacotes
 on:
   push:
     branches: [main]
-    tags: ["v*"]
   pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
 
 jobs:
@@ -22,7 +23,7 @@ jobs:
       - name: Gerar pacotes
         run: node build.mjs
         env:
-          VERSAO: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+          VERSAO: ${{ github.event_name == 'release' && github.event.release.tag_name || '' }}
 
       - name: Validar pacote do Firefox
         run: npx --yes web-ext lint --source-dir dist/firefox
@@ -33,9 +34,9 @@ jobs:
           path: dist/*.zip
           if-no-files-found: error
 
-      - name: Publicar release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*.zip
-          generate_release_notes: true
+      - name: Anexar zips ao release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" dist/*.zip --clobber --repo "$GITHUB_REPOSITORY"
