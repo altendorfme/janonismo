@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Janonismo — Configurações</title>
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 20px; }
+    section { border: 1px solid var(--borda); border-radius: 12px; padding: 16px; }
+    .linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .linha input[type=text], .linha input[type=url] { flex: 1 1 220px; min-width: 0; }
+    ul { list-style: none; margin: 10px 0 0; padding: 0; max-height: 420px; overflow: auto; }
+    li { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-top: 1px solid var(--borda); }
+    li:first-child { border-top: 0; }
+    li .info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    li.desligado .info { opacity: .45; text-decoration: line-through; }
+    .tag { font-size: 11px; padding: 1px 6px; border-radius: 99px; background: var(--painel); color: var(--suave); }
+    #filtro { width: 100%; margin-top: 4px; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="marca">
+    <img src="../icons/48.png" alt="">
+    <h1>Janonismo — Configurações</h1>
+  </div>
+
+  <section>
+    <h2>Geral</h2>
+    <label class="interruptor"><input type="checkbox" id="ativo"> Proteção ligada</label>
+  </section>
+
+  <section>
+    <h2>Lista remota</h2>
+    <p class="suave">URL de um JSON no mesmo formato do <code>data/lista.json</code>. É baixado a cada 6 horas. Deixe em branco para não usar lista remota.</p>
+    <div class="linha">
+      <input type="url" id="url-remota" placeholder="https://janonismo.vercel.app/lista.json">
+      <button id="salvar-url">Salvar e atualizar</button>
+    </div>
+    <p class="suave" id="status-remota" role="status"></p>
+  </section>
+
+  <section>
+    <h2>Adicionar perfil</h2>
+    <div class="linha">
+      <input type="text" id="novo-handle" placeholder="Cole a URL do perfil ou digite @usuario">
+      <select id="nova-plataforma" aria-label="Plataforma"></select>
+    </div>
+    <div class="linha" style="margin-top:8px">
+      <input type="text" id="novo-nome" placeholder="Nome (opcional)">
+      <button id="adicionar">Adicionar</button>
+    </div>
+    <p class="erro" id="erro-adicionar" role="alert"></p>
+    <h2 style="margin-top:12px">Meus perfis</h2>
+    <ul id="extras"></ul>
+    <p class="suave" id="extras-vazio">Nenhum perfil adicionado por você.</p>
+  </section>
+
+  <section>
+    <h2>Lista padrão</h2>
+    <p class="suave">Desmarque para deixar de alertar sobre um perfil.</p>
+    <input type="search" id="filtro" placeholder="Filtrar por nome ou @usuario">
+    <ul id="base"></ul>
+  </section>
+</main>
+
+<script src="../shared/plataformas.js"></script>
+<script src="../shared/lista.js"></script>
+<script src="options.js"></script>
+</body>
+</html>

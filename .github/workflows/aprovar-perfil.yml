@@ -1,0 +1,62 @@
+name: Aprovar perfil
+
+on:
+  issues:
+    types: [labeled]
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: lista-json
+  cancel-in-progress: false
+
+jobs:
+  aplicar:
+    if: github.event.label.name == 'aprovado' && contains(github.event.issue.labels.*.name, 'novo-perfil')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - id: aplicar
+        run: node scripts/aplicar-issue.mjs
+        env:
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          RESPOSTA: ${{ runner.temp }}/resposta.md
+
+      - name: Gravar lista
+        if: steps.aplicar.outputs.resultado == 'ok'
+        env:
+          NOME: ${{ steps.aplicar.outputs.nome }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/data/lista.json
+          git commit -m "Lista: $NOME (#$ISSUE_NUMBER)"
+          git pull --rebase
+          git push
+
+      - name: Responder e fechar
+        if: steps.aplicar.outputs.resultado == 'ok' || steps.aplicar.outputs.resultado == 'sem-mudanca'
+        run: |
+          gh issue comment "$ISSUE_NUMBER" --body-file "$RUNNER_TEMP/resposta.md"
+          gh issue close "$ISSUE_NUMBER" --reason completed
+
+      - name: Avisar erro
+        if: always() && steps.aplicar.outputs.resultado != 'ok' && steps.aplicar.outputs.resultado != 'sem-mudanca'
+        run: |
+          if [ -f "$RUNNER_TEMP/resposta.md" ]; then
+            gh issue comment "$ISSUE_NUMBER" --body-file "$RUNNER_TEMP/resposta.md"
+          else
+            gh issue comment "$ISSUE_NUMBER" --body "❌ Falha inesperada ao aplicar a issue. Veja o log da Action."
+          fi
+          gh issue edit "$ISSUE_NUMBER" --remove-label aprovado
+          exit 1

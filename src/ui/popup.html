@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Janonismo</title>
+  <link rel="stylesheet" href="ui.css">
+  <style>
+    body { width: 300px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+    .placar { background: var(--vermelho-claro); border-radius: 10px; padding: 12px; text-align: center; }
+    .placar strong { display: block; font-size: 34px; color: var(--vermelho); line-height: 1; }
+    .acoes { display: flex; gap: 8px; }
+    .acoes button { flex: 1; }
+    #aviso-permissao { display: none; flex-direction: column; gap: 8px; border: 1px solid var(--vermelho); border-radius: 10px; padding: 10px; }
+  </style>
+</head>
+<body>
+  <div class="marca">
+    <img src="../icons/48.png" alt="">
+    <h1>Janonismo</h1>
+  </div>
+
+  <div id="aviso-permissao">
+    <span>O navegador ainda não deixou a extensão ler as redes sociais.</span>
+    <button id="conceder">Permitir</button>
+  </div>
+
+  <label class="interruptor"><input type="checkbox" id="ativo"> Proteção ligada</label>
+
+  <div class="placar">
+    <strong id="contador">0</strong>
+    vezes que o Janones te salvou
+  </div>
+
+  <p class="suave" id="total" style="margin:0"></p>
+
+  <div class="acoes">
+    <button id="atualizar" class="secundario">Atualizar lista</button>
+    <button id="opcoes">Configurações</button>
+  </div>
+  <p class="suave" id="status" style="margin:0" role="status"></p>
+
+  <script src="../shared/plataformas.js"></script>
+  <script src="../shared/lista.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+name: Pacotes
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Gerar pacotes
+        run: node build.mjs
+        env:
+          VERSAO: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
+
+      - name: Validar pacote do Firefox
+        run: npx --yes web-ext lint --source-dir dist/firefox
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: janonismo-pacotes
+          path: dist/*.zip
+          if-no-files-found: error
+
+      - name: Publicar release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "mkdir -p public && cp src/data/lista.json public/lista.json",
+  "outputDirectory": "public",
+  "redirects": [
+    { "source": "/", "destination": "https://github.com/altendorfme/janonismo", "permanent": false }
+  ],
+  "headers": [
+    {
+      "source": "/lista.json",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Content-Type", "value": "application/json; charset=utf-8" },
+        { "key": "Cache-Control", "value": "public, max-age=300" }
+      ]
+    }
+  ]
+}

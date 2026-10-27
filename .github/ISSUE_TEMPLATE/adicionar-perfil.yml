@@ -1,0 +1,93 @@
+name: Adicionar perfil à lista
+description: Sugira um perfil público de extrema direita para o Janonismo bloquear.
+title: "[Perfil] "
+labels: ["novo-perfil"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Preencha o nome e **pelo menos uma** rede social. Em cada rede você pode colar a URL do perfil ou digitar só o @usuario; para mais de uma conta na mesma rede, separe por vírgula.
+
+        Depois que alguém da equipe aplicar o rótulo `aprovado`, a lista é atualizada automaticamente.
+  - type: input
+    id: nome
+    attributes:
+      label: Nome
+      description: Nome público da pessoa ou do canal. Se já estiver na lista, as contas novas entram no perfil existente.
+      placeholder: Fulano de Tal
+    validations:
+      required: true
+  - type: input
+    id: x
+    attributes:
+      label: X / Twitter
+      placeholder: "@usuario ou https://x.com/usuario"
+  - type: input
+    id: instagram
+    attributes:
+      label: Instagram
+      placeholder: "@usuario ou https://www.instagram.com/usuario/"
+  - type: input
+    id: tiktok
+    attributes:
+      label: TikTok
+      placeholder: "@usuario ou https://www.tiktok.com/@usuario"
+  - type: input
+    id: youtube
+    attributes:
+      label: YouTube
+      placeholder: "@canal ou https://www.youtube.com/@canal"
+  - type: input
+    id: facebook
+    attributes:
+      label: Facebook
+      placeholder: "usuario ou https://www.facebook.com/usuario"
+  - type: input
+    id: threads
+    attributes:
+      label: Threads
+      placeholder: "@usuario ou https://www.threads.com/@usuario"
+  - type: input
+    id: kwai
+    attributes:
+      label: Kwai
+      placeholder: "@usuario ou https://www.kwai.com/@usuario"
+  - type: input
+    id: truthsocial
+    attributes:
+      label: Truth Social
+      placeholder: "@usuario ou https://truthsocial.com/@usuario"
+  - type: input
+    id: gettr
+    attributes:
+      label: GETTR
+      placeholder: "usuario ou https://gettr.com/user/usuario"
+  - type: input
+    id: rumble
+    attributes:
+      label: Rumble
+      placeholder: "canal ou https://rumble.com/c/canal"
+  - type: input
+    id: telegram
+    attributes:
+      label: Telegram
+      placeholder: "canal ou https://t.me/canal"
+  - type: textarea
+    id: motivo
+    attributes:
+      label: Por que esse perfil deve entrar?
+      description: Explique em poucas linhas. Esse texto não vai para a lista, serve só para a avaliação.
+    validations:
+      required: true
+  - type: textarea
+    id: referencias
+    attributes:
+      label: Links de referência
+      description: Matérias, posts ou outras fontes que ajudem a avaliar (opcional).
+  - type: checkboxes
+    id: confirmacao
+    attributes:
+      label: Confirmação
+      options:
+        - label: É uma conta pública de uma figura pública (político, influenciador, canal), não de uma pessoa comum.
+          required: true
