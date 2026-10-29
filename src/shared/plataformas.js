@@ -103,6 +103,15 @@
     return segs[0]?.startsWith('@') ? segs[0].slice(1) : null;
   }
 
+  // URL com % malformado (ex.: "%E0%A4%A") faz decodeURIComponent lançar; nesse caso usa o texto cru.
+  function decodificar(segmento) {
+    try {
+      return decodeURIComponent(segmento);
+    } catch {
+      return segmento;
+    }
+  }
+
   function normalizarHandle(handle) {
     return String(handle || '').trim().replace(/^@/, '').toLowerCase();
   }
@@ -126,7 +135,7 @@
     if (!plataforma) return null;
 
     const regras = PLATAFORMAS[plataforma];
-    const segs = url.pathname.split('/').filter(Boolean).map(decodeURIComponent);
+    const segs = url.pathname.split('/').filter(Boolean).map(decodificar);
     const bruto = regras.extrair(segs, url);
     const handle = normalizarHandle(bruto);
     if (!handle || handle.startsWith('+')) return null;
