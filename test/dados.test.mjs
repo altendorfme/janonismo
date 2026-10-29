@@ -71,6 +71,10 @@ describe('src/manifest.base.json', () => {
     assert.match(manifest.version, /^\d+(\.\d+){0,3}$/);
   });
 
+  it('os recursos acessíveis pela web usam URL dinâmica, para os sites não detectarem a extensão', () => {
+    assert.deepEqual(manifest.web_accessible_resources.map((war) => war.use_dynamic_url), [true]);
+  });
+
   it('os content scripts rodam em todos os hosts das plataformas, e só neles', () => {
     assert.deepEqual([...new Set(hostsDosMatches)].sort(), [...hostsDasPlataformas].sort());
   });
