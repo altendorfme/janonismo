@@ -33,15 +33,32 @@ export function corpoIssue(campos) {
 }
 
 /**
- * Instala um `chrome` e um `fetch` falsos com o que src/shared/lista.js usa.
+ * Instala um `chrome` e um `fetch` falsos com o que src/ usa.
  * - storage: conteúdo inicial do chrome.storage.local
  * - rede: { url: objeto (vira JSON) | Response }; URL ausente = falha de rede
- * Devolve o storage, que pode ser inspecionado depois.
+ * Devolve o storage, que pode ser inspecionado depois. Os ouvintes registrados ficam em
+ * chrome.<api>.<evento>.ouvintes, e os alarmes criados em chrome.alarms.criados.
  */
 export function simularExtensao({ storage = {}, rede = {} } = {}) {
   const dados = structuredClone(storage);
+  const criados = {};
+  const evento = () => {
+    const ouvintes = [];
+    return { ouvintes, addListener: (fn) => void ouvintes.push(fn) };
+  };
   globalThis.chrome = {
-    runtime: { getURL: (caminho) => `ext://${caminho}` },
+    runtime: {
+      getURL: (caminho) => `ext://${caminho}`,
+      onInstalled: evento(),
+      onStartup: evento(),
+      onMessage: evento(),
+    },
+    alarms: {
+      criados,
+      get: async (nome) => criados[nome],
+      create: (nome, info) => void (criados[nome] = { name: nome, ...info }),
+      onAlarm: evento(),
+    },
     storage: {
       local: {
         get: async (chaves) =>
@@ -57,4 +74,12 @@ export function simularExtensao({ storage = {}, rede = {} } = {}) {
     return resposta instanceof Response ? resposta.clone() : new Response(JSON.stringify(resposta));
   };
   return dados;
+}
+
+/** Espera `condicao()` ficar verdadeira (para efeitos que o código dispara sem esperar). */
+export async function esperar(condicao, ms = 1000) {
+  for (const fim = Date.now() + ms; !condicao(); ) {
+    if (Date.now() > fim) throw new Error(`tempo esgotado esperando ${condicao}`);
+    await new Promise((r) => setTimeout(r, 5));
+  }
 }

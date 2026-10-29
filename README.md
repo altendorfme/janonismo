@@ -25,6 +25,7 @@ Os testes ficam em `test/` e usam só o `node:test`:
 - `plataformas.test.mjs`: quais URLs viram perfil (e quais não viram) em cada rede.
 - `lista.test.mjs`: junção da lista embutida, da remota, dos extras e dos removidos, e como a extensão se
   comporta quando o download da lista remota falha (com um `chrome.storage` simulado).
+- `background.test.mjs`: mensagens (download pelo background, contador sem perder avisos), instalação e alarme.
 - `aplicar-issue.test.mjs`: leitura das issues de sugestão e o que o script devolve para o workflow.
 - `dados.test.mjs`: `lista.json` válida e sem duplicados, e manifest, plataformas e formulário da issue
   coerentes entre si.
