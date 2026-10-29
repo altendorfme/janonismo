@@ -37,21 +37,35 @@ export function corpoIssue(campos) {
  * - storage: conteúdo inicial do chrome.storage.local
  * - rede: { url: objeto (vira JSON) | Response }; URL ausente = falha de rede
  * Devolve o storage, que pode ser inspecionado depois. Os ouvintes registrados ficam em
- * chrome.<api>.<evento>.ouvintes, e os alarmes criados em chrome.alarms.criados.
+ * chrome.<api>.<evento>.ouvintes, os alarmes criados em chrome.alarms.criados e as mensagens enviadas
+ * em chrome.runtime.enviadas.
  */
 export function simularExtensao({ storage = {}, rede = {} } = {}) {
   const dados = structuredClone(storage);
   const criados = {};
+  const enviadas = [];
   const evento = () => {
     const ouvintes = [];
     return { ouvintes, addListener: (fn) => void ouvintes.push(fn) };
+  };
+  const onMessage = evento();
+  const onChanged = evento();
+  const avisarMudancas = (mudancas) => {
+    if (Object.keys(mudancas).length) onChanged.ouvintes.forEach((ouvinte) => ouvinte(structuredClone(mudancas), 'local'));
   };
   globalThis.chrome = {
     runtime: {
       getURL: (caminho) => `ext://${caminho}`,
       onInstalled: evento(),
       onStartup: evento(),
-      onMessage: evento(),
+      onMessage,
+      enviadas,
+      // Entrega aos ouvintes de onMessage; resolve com a resposta, ou undefined se ninguém responder.
+      sendMessage: (msg) =>
+        new Promise((resolve) => {
+          enviadas.push(msg);
+          if (!onMessage.ouvintes.map((ouvinte) => ouvinte(msg, {}, resolve)).some(Boolean)) resolve(undefined);
+        }),
     },
     alarms: {
       criados,
@@ -60,11 +74,20 @@ export function simularExtensao({ storage = {}, rede = {} } = {}) {
       onAlarm: evento(),
     },
     storage: {
+      onChanged,
       local: {
         get: async (chaves) =>
           structuredClone(Object.fromEntries([].concat(chaves).filter((k) => k in dados).map((k) => [k, dados[k]]))),
-        set: async (obj) => void Object.assign(dados, structuredClone(obj)),
-        remove: async (chaves) => [].concat(chaves).forEach((k) => delete dados[k]),
+        set: async (obj) => {
+          const mudancas = Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, { oldValue: dados[k], newValue: v }]));
+          Object.assign(dados, structuredClone(obj));
+          avisarMudancas(mudancas);
+        },
+        remove: async (chaves) => {
+          const mudancas = Object.fromEntries([].concat(chaves).filter((k) => k in dados).map((k) => [k, { oldValue: dados[k] }]));
+          [].concat(chaves).forEach((k) => delete dados[k]);
+          avisarMudancas(mudancas);
+        },
       },
     },
   };

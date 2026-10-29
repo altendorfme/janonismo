@@ -24,12 +24,7 @@ beforeEach(() => {
 /** Dispara um evento como o navegador e espera os ouvintes (que podem ser async). */
 const disparar = (evento, ...args) => Promise.all(evento.ouvintes.map((ouvinte) => ouvinte(...args)));
 
-/** Como chrome.runtime.sendMessage: devolve a resposta, ou undefined se ninguém responder. */
-const enviar = (msg) =>
-  new Promise((resolve) => {
-    const vaiResponder = runtime.onMessage.ouvintes.map((ouvinte) => ouvinte(msg, {}, resolve)).some(Boolean);
-    if (!vaiResponder) resolve(undefined);
-  });
+const enviar = (msg) => runtime.sendMessage(msg);
 
 describe('mensagens', () => {
   it('atualizarRemota responde com o resultado do download', async () => {
