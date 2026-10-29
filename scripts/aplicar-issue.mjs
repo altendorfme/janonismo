@@ -21,7 +21,7 @@ export function lerCampos(corpo) {
   return campos;
 }
 
-function interpretarHandle(plataforma, bruto) {
+export function interpretarHandle(plataforma, bruto) {
   const texto = bruto.trim();
   if (/^https?:\/\//i.test(texto)) {
     const perfil = extrairPerfil(texto);

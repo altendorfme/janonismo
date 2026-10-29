@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" role="img" aria-label="Pare">
+  <rect width="500" height="500" fill="#0b0d12"/>
+  <polygon points="322.7,74.5 425.5,177.3 425.5,322.7 322.7,425.5 177.3,425.5 74.5,322.7 74.5,177.3 177.3,74.5"
+    fill="#e0201b" stroke="#f4f1ea" stroke-width="14" stroke-linejoin="round"/>
+  <text x="250" y="292" text-anchor="middle" fill="#f4f1ea"
+    font-family="'Barlow Condensed', 'Arial Narrow', Arial, sans-serif" font-weight="800" font-size="124">PARE</text>
+</svg>
