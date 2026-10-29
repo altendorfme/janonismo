@@ -24,7 +24,8 @@ $('ativo').addEventListener('change', async (e) => {
 $('atualizar').addEventListener('click', async () => {
   $('atualizar').disabled = true;
   $('status').textContent = 'Baixando…';
-  const r = await lista.atualizarRemota();
+  // Pelo background, para o download terminar mesmo se o popup fechar.
+  const r = await chrome.runtime.sendMessage({ tipo: 'atualizarRemota' }).catch((e) => ({ ok: false, erro: e.message }));
   $('status').textContent = r.ok ? `Lista atualizada (${r.total} perfis remotos).` : `Falhou: ${r.erro}`;
   $('atualizar').disabled = false;
   render();

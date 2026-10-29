@@ -4,9 +4,13 @@
   "private": true,
   "description": "Não engaje a extrema direita, siga os mandamentos do Janones",
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "build": "node build.mjs",
-    "lint": "npm run build && npx --yes web-ext lint -s dist/firefox",
-    "firefox": "npm run build && npx --yes web-ext run -s dist/firefox"
+    "test": "node --test test/*.test.mjs",
+    "lint": "npm run build && npx --yes web-ext@10 lint -s dist/firefox",
+    "firefox": "npm run build && npx --yes web-ext@10 run -s dist/firefox"
   }
 }
