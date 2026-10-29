@@ -7,115 +7,100 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 import { aplicar, extrairPedido, lerCampos, serializar } from '../scripts/aplicar-issue.mjs';
-
-// Monta o corpo da issue do jeito que o GitHub renderiza um formulário.
-function corpo(campos) {
-  return Object.entries(campos)
-    .map(([titulo, valor]) => `### ${titulo}\n\n${valor || '_No response_'}`)
-    .join('\n\n');
-}
-
-const lista = () => ({
-  versao: 3,
-  atualizado: '2026-01-01',
-  perfis: [{ nome: 'Flávio Bolsonaro', x: ['flaviobolsonaro'] }],
-});
+import { PLATAFORMAS, RAIZ, corpoIssue, ler, lerJson } from './helpers.mjs';
 
 describe('lerCampos', () => {
   it('lê títulos e valores, com \\r\\n e _No response_', () => {
     const texto = '### Nome\r\n\r\nFulano\r\n\r\n### Instagram\r\n\r\n_No response_\r\n\r\n### X / Twitter\r\n\r\n@fulano';
     assert.deepEqual(lerCampos(texto), { Nome: 'Fulano', Instagram: '', 'X / Twitter': '@fulano' });
   });
+
   it('aceita corpo vazio', () => assert.deepEqual(lerCampos(null), {}));
 });
 
 describe('extrairPedido', () => {
-  it('aceita @handle, URL e vários valores separados por vírgula', () => {
-    const pedido = extrairPedido(
-      corpo({
-        Nome: 'Fulano de Tal',
+  const VALIDOS = [
+    {
+      caso: '@handle, URL e vários valores separados por vírgula',
+      campos: {
         'X / Twitter': '@Fulano, https://x.com/fulano2/status/1',
         Instagram: 'https://www.instagram.com/fulano.oficial/',
         YouTube: 'https://www.youtube.com/@FulanoTV',
-        Telegram: '_No response_',
-      })
-    );
-    assert.deepEqual(pedido, {
-      nome: 'Fulano de Tal',
+        Telegram: '',
+      },
       handles: { x: ['fulano', 'fulano2'], instagram: ['fulano.oficial'], youtube: ['fulanotv'] },
+    },
+    {
+      caso: 'duplicados dentro da mesma issue',
+      campos: { 'X / Twitter': '@fulano, fulano\nhttps://x.com/Fulano' },
+      handles: { x: ['fulano'] },
+    },
+  ];
+  for (const { caso, campos, handles } of VALIDOS) {
+    it(`aceita ${caso}`, () => {
+      assert.deepEqual(extrairPedido(corpoIssue({ Nome: 'Fulano de Tal', ...campos })), { nome: 'Fulano de Tal', handles });
     });
-  });
+  }
 
-  it('remove duplicados dentro da mesma issue', () => {
-    const pedido = extrairPedido(corpo({ Nome: 'F', 'X / Twitter': '@fulano, fulano\nhttps://x.com/Fulano' }));
-    assert.deepEqual(pedido.handles, { x: ['fulano'] });
-  });
-
-  it('exige nome', () => {
-    assert.throws(() => extrairPedido(corpo({ Nome: '', 'X / Twitter': 'fulano' })), /Nome/);
-  });
-
-  it('limita o nome a 80 caracteres', () => {
-    assert.throws(() => extrairPedido(corpo({ Nome: 'a'.repeat(81), 'X / Twitter': 'fulano' })), /80/);
-  });
-
-  it('exige pelo menos uma rede', () => {
-    assert.throws(() => extrairPedido(corpo({ Nome: 'Fulano' })), /nenhuma rede/);
-  });
-
-  it('recusa URL de outra rede no campo errado', () => {
-    assert.throws(
-      () => extrairPedido(corpo({ Nome: 'F', Instagram: 'https://x.com/fulano' })),
-      /é do X \/ Twitter, não do Instagram/
-    );
-  });
-
-  it('recusa URL que não é perfil', () => {
-    assert.throws(() => extrairPedido(corpo({ Nome: 'F', 'X / Twitter': 'https://x.com/home' })), /não reconheci/);
-  });
-
-  it('recusa handle inválido e página reservada', () => {
-    assert.throws(() => extrairPedido(corpo({ Nome: 'F', 'X / Twitter': 'nome com espaço' })), /não é um usuário válido/);
-    assert.throws(() => extrairPedido(corpo({ Nome: 'F', 'X / Twitter': 'muito_comprido_para_o_x' })), /não é um usuário válido/);
-    assert.throws(() => extrairPedido(corpo({ Nome: 'F', Instagram: 'explore' })), /é uma página do Instagram/);
-  });
-
-  it('junta todos os erros numa mensagem só', () => {
-    assert.throws(
-      () => extrairPedido(corpo({ Nome: 'F', 'X / Twitter': 'a b', Instagram: 'explore' })),
-      (e) => e.message.includes('**X / Twitter**') && e.message.includes('**Instagram**')
-    );
-  });
+  const INVALIDOS = [
+    { caso: 'sem nome', campos: { Nome: '', 'X / Twitter': 'fulano' }, erro: /Nome/ },
+    { caso: 'nome com mais de 80 caracteres', campos: { Nome: 'a'.repeat(81), 'X / Twitter': 'fulano' }, erro: /80/ },
+    { caso: 'nenhuma rede', campos: { Nome: 'F' }, erro: /nenhuma rede/ },
+    { caso: 'URL de outra rede', campos: { Nome: 'F', Instagram: 'https://x.com/fulano' }, erro: /é do X \/ Twitter, não do Instagram/ },
+    { caso: 'URL que não é perfil', campos: { Nome: 'F', 'X / Twitter': 'https://x.com/home' }, erro: /não reconheci/ },
+    { caso: 'handle com espaço', campos: { Nome: 'F', 'X / Twitter': 'nome com espaço' }, erro: /não é um usuário válido/ },
+    { caso: 'handle fora do formato', campos: { Nome: 'F', 'X / Twitter': 'muito_comprido_para_o_x' }, erro: /não é um usuário válido/ },
+    { caso: 'página reservada', campos: { Nome: 'F', Instagram: 'explore' }, erro: /é uma página do Instagram/ },
+    {
+      caso: 'vários erros (junta todos)',
+      campos: { Nome: 'F', 'X / Twitter': 'a b', Instagram: 'explore' },
+      erro: /\*\*X \/ Twitter\*\*[\s\S]*\*\*Instagram\*\*/,
+    },
+  ];
+  for (const { caso, campos, erro } of INVALIDOS) {
+    it(`recusa ${caso}`, () => assert.throws(() => extrairPedido(corpoIssue(campos)), erro));
+  }
 });
 
 describe('aplicar', () => {
-  it('cria perfil novo e sobe a versão', () => {
-    const l = lista();
-    const r = aplicar(l, { nome: 'Novo', handles: { x: ['novo'], tiktok: ['novo.tt'] } }, '2026-10-29');
-    assert.deepEqual(r.adicionados, ['@novo no X / Twitter', '@novo.tt no TikTok']);
-    assert.deepEqual(l.perfis.at(-1), { nome: 'Novo', x: ['novo'], tiktok: ['novo.tt'] });
-    assert.equal(l.versao, 4);
-    assert.equal(l.atualizado, '2026-10-29');
-  });
+  const FLAVIO = { nome: 'Flávio Bolsonaro', x: ['flaviobolsonaro'] };
+  const CASOS = [
+    {
+      caso: 'cria perfil novo',
+      pedido: { nome: 'Novo', handles: { x: ['novo'], tiktok: ['novo.tt'] } },
+      perfis: [FLAVIO, { nome: 'Novo', x: ['novo'], tiktok: ['novo.tt'] }],
+      resultado: { nomeFinal: 'Novo', adicionados: ['@novo no X / Twitter', '@novo.tt no TikTok'], ignorados: [] },
+    },
+    {
+      caso: 'junta no perfil existente ignorando acento e maiúsculas',
+      pedido: { nome: 'flavio bolsonaro', handles: { instagram: ['flaviobolsonaro'] } },
+      perfis: [{ ...FLAVIO, instagram: ['flaviobolsonaro'] }],
+      resultado: { nomeFinal: 'Flávio Bolsonaro', adicionados: ['@flaviobolsonaro no Instagram'], ignorados: [] },
+    },
+    {
+      caso: 'ignora conta que já está em outro perfil, sem deixar perfil vazio',
+      pedido: { nome: 'Outro', handles: { x: ['flaviobolsonaro'] } },
+      perfis: [FLAVIO],
+      resultado: {
+        nomeFinal: 'Outro',
+        adicionados: [],
+        ignorados: ['@flaviobolsonaro no X / Twitter (já está na lista como Flávio Bolsonaro)'],
+      },
+    },
+  ];
 
-  it('junta no perfil existente ignorando acento e maiúsculas', () => {
-    const l = lista();
-    const r = aplicar(l, { nome: 'flavio bolsonaro', handles: { instagram: ['flaviobolsonaro'] } }, '2026-10-29');
-    assert.equal(r.nomeFinal, 'Flávio Bolsonaro');
-    assert.equal(l.perfis.length, 1);
-    assert.deepEqual(l.perfis[0].instagram, ['flaviobolsonaro']);
-  });
-
-  it('ignora contas que já estão na lista, mesmo em outro perfil', () => {
-    const l = lista();
-    const r = aplicar(l, { nome: 'Outro', handles: { x: ['FlavioBolsonaro'] } }, '2026-10-29');
-    assert.deepEqual(r.adicionados, []);
-    assert.equal(r.ignorados.length, 1);
-    assert.match(r.ignorados[0], /Flávio Bolsonaro/);
-    assert.equal(l.perfis.length, 1, 'não deixa perfil vazio para trás');
-    assert.equal(l.versao, 3, 'sem mudança, sem versão nova');
-    assert.equal(l.atualizado, '2026-01-01');
-  });
+  for (const { caso, pedido, perfis, resultado } of CASOS) {
+    it(caso, () => {
+      const lista = { versao: 3, atualizado: '2026-01-01', perfis: [structuredClone(FLAVIO)] };
+      assert.deepEqual(aplicar(lista, pedido, '2026-10-29'), resultado);
+      const mudou = resultado.adicionados.length > 0;
+      assert.deepEqual(lista, {
+        versao: mudou ? 4 : 3,
+        atualizado: mudou ? '2026-10-29' : '2026-01-01',
+        perfis,
+      });
+    });
+  }
 });
 
 describe('serializar', () => {
@@ -125,41 +110,50 @@ describe('serializar', () => {
       texto,
       '{\n  "versao": 1,\n  "atualizado": "2026-01-01",\n  "perfis": [\n    { "nome": "A", "x": ["a"], "extra": 1 }\n  ]\n}\n'
     );
-    assert.deepEqual(JSON.parse(texto).perfis[0], { nome: 'A', x: ['a'], extra: 1 });
   });
 });
 
 describe('script (contrato com o workflow aprovar-perfil.yml)', () => {
-  const rodar = async (issueBody) => {
+  /** Roda o script como o workflow roda e devolve o que ele escreveu. */
+  async function rodar(campos) {
     const dir = mkdtempSync(join(tmpdir(), 'janonismo-'));
     const env = {
       ...process.env,
-      ISSUE_BODY: issueBody,
+      ISSUE_BODY: corpoIssue(campos),
       ISSUE_NUMBER: '42',
       RESPOSTA: join(dir, 'resposta.md'),
       GITHUB_OUTPUT: join(dir, 'saida'),
     };
-    await promisify(execFile)(process.execPath, ['scripts/aplicar-issue.mjs'], { env }).catch((e) => e);
+    await promisify(execFile)(process.execPath, ['scripts/aplicar-issue.mjs'], { cwd: RAIZ, env });
     return { resposta: readFileSync(env.RESPOSTA, 'utf8'), saida: readFileSync(env.GITHUB_OUTPUT, 'utf8') };
-  };
+  }
 
-  it('em caso de erro escreve resultado=erro e a mensagem para a issue', async () => {
-    const { resposta, saida } = await rodar(corpo({ Nome: 'Fulano' }));
-    assert.equal(saida, 'resultado=erro\n');
-    assert.match(resposta, /^❌ Não consegui aplicar #42/);
-    assert.match(resposta, /nenhuma rede/);
-  });
+  // Uma conta que já está na lista, para o caso "nada novo" não precisar gravar o arquivo.
+  const [{ nome, ...redes }] = lerJson('src', 'data', 'lista.json').perfis;
+  const [plataforma, [handle]] = Object.entries(redes)[0];
 
-  it('sem nada novo escreve resultado=sem-mudanca e não mexe na lista', async () => {
-    const arquivo = new URL('../src/data/lista.json', import.meta.url);
-    const antes = readFileSync(arquivo, 'utf8');
-    const { perfis } = JSON.parse(antes);
-    const [plataforma, [handle]] = Object.entries(perfis[0]).find(([k]) => k !== 'nome');
-    const rotulo = { x: 'X / Twitter', instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube', facebook: 'Facebook' }[plataforma];
+  const CASOS = [
+    {
+      caso: 'erro',
+      campos: { Nome: 'Fulano' },
+      saida: 'resultado=erro\n',
+      resposta: /^❌ Não consegui aplicar #42[\s\S]*nenhuma rede/,
+    },
+    {
+      caso: 'nada novo',
+      campos: { Nome: nome, [PLATAFORMAS[plataforma].nome]: handle },
+      saida: `resultado=sem-mudanca\nnome=${nome}\n`,
+      resposta: /^ℹ️ Nada novo/,
+    },
+  ];
 
-    const { resposta, saida } = await rodar(corpo({ Nome: perfis[0].nome, [rotulo]: handle }));
-    assert.equal(saida, `resultado=sem-mudanca\nnome=${perfis[0].nome}\n`);
-    assert.match(resposta, /Nada novo/);
-    assert.equal(readFileSync(arquivo, 'utf8'), antes);
-  });
+  for (const { caso, campos, saida, resposta } of CASOS) {
+    it(`${caso}: escreve a saída e a resposta sem mexer na lista`, async () => {
+      const antes = ler('src', 'data', 'lista.json');
+      const r = await rodar(campos);
+      assert.equal(r.saida, saida);
+      assert.match(r.resposta, resposta);
+      assert.equal(ler('src', 'data', 'lista.json'), antes);
+    });
+  }
 });

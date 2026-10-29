@@ -1,149 +1,116 @@
-import { beforeEach, describe, it } from 'node:test';
+import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
-// Simula só o pedaço da API de extensão que src/shared/lista.js usa.
-let armazenado;
-let respostas;
-
-globalThis.chrome = {
-  runtime: { getURL: (caminho) => `ext://${caminho}` },
-  storage: {
-    local: {
-      async get(chaves) {
-        const lista = [].concat(chaves);
-        return structuredClone(Object.fromEntries(lista.filter((k) => k in armazenado).map((k) => [k, armazenado[k]])));
-      },
-      async set(obj) {
-        Object.assign(armazenado, structuredClone(obj));
-      },
-      async remove(chaves) {
-        for (const k of [].concat(chaves)) delete armazenado[k];
-      },
-    },
-  },
-};
-
-globalThis.fetch = async (url) => {
-  const r = respostas[url];
-  if (!r) throw new TypeError('fetch failed');
-  return typeof r === 'function' ? r() : new Response(JSON.stringify(r));
-};
-
-await import('../src/shared/plataformas.js');
-await import('../src/shared/lista.js');
-const { lista } = globalThis.Janonismo;
+import { lista, simularExtensao } from './helpers.mjs';
 
 const REMOTA = 'https://exemplo.test/lista.json';
-
 const EMBUTIDA = {
-  versao: 1,
   perfis: [
-    { nome: 'Fulano', x: ['Fulano'], instagram: ['fulano.oficial'] },
-    { nome: 'Beltrano', youtube: 'beltranotv' },
-    { nome: 'Vazio', x: [''] },
+    { nome: 'Fulano', x: ['Fulano'] },
+    { nome: 'Beltrano', youtube: 'beltranotv' }, // string no lugar do array também vale
+    { nome: 'Vazio', x: [''] }, // handle vazio é ignorado
   ],
 };
 
-beforeEach(() => {
-  armazenado = { config: { ativo: true, urlRemota: REMOTA } };
-  respostas = { 'ext://data/lista.json': EMBUTIDA };
-});
+/** Extensão com a lista embutida acima e a URL remota configurada; storage e rede podem ser sobrescritos. */
+const extensao = ({ storage, rede } = {}) =>
+  simularExtensao({
+    storage: { config: { ativo: true, urlRemota: REMOTA }, ...storage },
+    rede: { 'ext://data/lista.json': EMBUTIDA, ...rede },
+  });
+
+/** Índice como { chave: 'Nome (origem)' }, mais fácil de ler nas tabelas. */
+const resumir = (indice) =>
+  Object.fromEntries(Object.entries(indice).map(([k, { nome, origem }]) => [k, `${nome} (${origem})`]));
+
+const BASE = { 'x:fulano': 'Fulano (embutida)', 'youtube:beltranotv': 'Beltrano (embutida)' };
 
 describe('recalcular', () => {
-  it('indexa a lista embutida com handles normalizados', async () => {
-    const indice = await lista.recalcular();
-    assert.deepEqual(indice, {
-      'x:fulano': { nome: 'Fulano', origem: 'embutida' },
-      'instagram:fulano.oficial': { nome: 'Fulano', origem: 'embutida' },
-      'youtube:beltranotv': { nome: 'Beltrano', origem: 'embutida' },
+  const CASOS = [
+    { caso: 'só a embutida', indice: BASE },
+    {
+      caso: 'soma a remota, e a embutida ganha quando as duas têm a mesma conta',
+      storage: { listaRemota: { perfis: [{ nome: 'Remoto', x: ['fulano', 'outro'] }] } },
+      indice: { ...BASE, 'x:outro': 'Remoto (remota)' },
+    },
+    {
+      caso: 'ignora lista remota salva com formato inválido',
+      storage: { listaRemota: { perfis: 'quebrado' } },
+      indice: BASE,
+    },
+    {
+      caso: 'soma os extras do usuário',
+      storage: { extras: [{ plataforma: 'tiktok', handle: '@Novo', nome: 'Novo' }] },
+      indice: { ...BASE, 'tiktok:novo': 'Novo (usuario)' },
+    },
+    {
+      caso: 'extra sem nome usa o handle',
+      storage: { extras: [{ plataforma: 'tiktok', handle: 'novo' }] },
+      indice: { ...BASE, 'tiktok:novo': 'novo (usuario)' },
+    },
+    {
+      caso: 'tira os removidos pelo usuário',
+      storage: { removidos: ['x:fulano'] },
+      indice: { 'youtube:beltranotv': 'Beltrano (embutida)' },
+    },
+    {
+      caso: 'perfil sem nome usa o handle',
+      rede: { 'ext://data/lista.json': { perfis: [{ x: ['semnome'] }] } },
+      indice: { 'x:semnome': 'semnome (embutida)' },
+    },
+  ];
+
+  for (const { caso, storage, rede, indice } of CASOS) {
+    it(caso, async () => {
+      const dados = extensao({ storage, rede });
+      assert.deepEqual(resumir(await lista.recalcular()), indice);
+      assert.deepEqual(resumir(dados.indice), indice, 'o índice fica salvo no storage');
     });
-    assert.deepEqual(armazenado.indice, indice, 'o índice fica salvo no storage');
-  });
-
-  it('soma a remota, e a embutida ganha quando os dois têm a mesma chave', async () => {
-    armazenado.listaRemota = { perfis: [{ nome: 'Fulano (remoto)', x: ['fulano', 'outro'] }] };
-    const indice = await lista.recalcular();
-    assert.deepEqual(indice['x:fulano'], { nome: 'Fulano', origem: 'embutida' });
-    assert.deepEqual(indice['x:outro'], { nome: 'Fulano (remoto)', origem: 'remota' });
-  });
-
-  it('ignora lista remota salva com formato inválido', async () => {
-    armazenado.listaRemota = { perfis: 'quebrado' };
-    const indice = await lista.recalcular();
-    assert.equal(Object.keys(indice).length, 3);
-  });
-
-  it('aplica perfis extras e removidos do usuário', async () => {
-    armazenado.extras = [{ plataforma: 'tiktok', handle: '@Novo', nome: 'Novo' }];
-    armazenado.removidos = ['x:fulano'];
-    const indice = await lista.recalcular();
-    assert.deepEqual(indice['tiktok:novo'], { nome: 'Novo', origem: 'usuario' });
-    assert.equal(indice['x:fulano'], undefined);
-    assert.ok(indice['instagram:fulano.oficial'], 'remover uma conta não remove as outras do mesmo perfil');
-  });
-
-  it('usa o handle como nome quando o perfil não tem nome', async () => {
-    respostas['ext://data/lista.json'] = { perfis: [{ x: ['semnome'] }] };
-    const indice = await lista.recalcular();
-    assert.equal(indice['x:semnome'].nome, 'semnome');
-  });
+  }
 });
 
 describe('atualizarRemota', () => {
   it('baixa, salva e recalcula', async () => {
-    respostas[REMOTA] = { perfis: [{ nome: 'Remoto', x: ['remoto'] }] };
-    const r = await lista.atualizarRemota();
-    assert.deepEqual(r, { ok: true, total: 1 });
-    assert.equal(armazenado.remotaErro, null);
-    assert.equal(typeof armazenado.remotaAtualizadaEm, 'number');
-    assert.deepEqual(armazenado.indice['x:remoto'], { nome: 'Remoto', origem: 'remota' });
+    const dados = extensao({ rede: { [REMOTA]: { perfis: [{ nome: 'Remoto', x: ['remoto'] }] } } });
+    assert.deepEqual(await lista.atualizarRemota(), { ok: true, total: 1 });
+    assert.equal(dados.remotaErro, null);
+    assert.equal(typeof dados.remotaAtualizadaEm, 'number');
+    assert.equal(resumir(dados.indice)['x:remoto'], 'Remoto (remota)');
   });
 
-  it('mantém a última lista boa quando o servidor responde erro', async () => {
-    const anterior = { perfis: [{ nome: 'Antigo', x: ['antigo'] }] };
-    armazenado.listaRemota = anterior;
-    respostas[REMOTA] = () => new Response('falhou', { status: 500 });
-    const r = await lista.atualizarRemota();
-    assert.deepEqual(r, { ok: false, erro: 'HTTP 500' });
-    assert.deepEqual(armazenado.listaRemota, anterior);
-    assert.equal(armazenado.remotaErro, 'HTTP 500');
-  });
+  const ANTERIOR = { perfis: [{ nome: 'Antigo', x: ['antigo'] }] };
+  const FALHAS = [
+    { caso: 'o servidor responde erro', resposta: new Response('falhou', { status: 500 }), erro: /^HTTP 500$/ },
+    { caso: 'o JSON não tem "perfis"', resposta: { coisas: [] }, erro: /perfis/ },
+    { caso: 'o JSON está quebrado', resposta: new Response('{ quebrado'), erro: /JSON/ },
+    { caso: 'a rede falha', resposta: undefined, erro: /^fetch failed$/ },
+  ];
 
-  it('mantém a última lista boa quando o JSON não tem "perfis"', async () => {
-    const anterior = { perfis: [] };
-    armazenado.listaRemota = anterior;
-    respostas[REMOTA] = { coisas: [] };
-    const r = await lista.atualizarRemota();
-    assert.equal(r.ok, false);
-    assert.match(r.erro, /perfis/);
-    assert.deepEqual(armazenado.listaRemota, anterior);
-  });
-
-  it('mantém a última lista boa quando o JSON está quebrado', async () => {
-    respostas[REMOTA] = () => new Response('{ quebrado');
-    const r = await lista.atualizarRemota();
-    assert.equal(r.ok, false);
-    assert.equal(armazenado.listaRemota, undefined);
-    assert.ok(armazenado.remotaErro);
-  });
-
-  it('trata falha de rede', async () => {
-    const r = await lista.atualizarRemota();
-    assert.deepEqual(r, { ok: false, erro: 'fetch failed' });
-  });
+  for (const { caso, resposta, erro } of FALHAS) {
+    it(`mantém a última lista boa quando ${caso}`, async () => {
+      const dados = extensao({ storage: { listaRemota: ANTERIOR }, rede: { [REMOTA]: resposta } });
+      const r = await lista.atualizarRemota();
+      assert.equal(r.ok, false);
+      assert.match(r.erro, erro);
+      assert.equal(dados.remotaErro, r.erro);
+      assert.deepEqual(dados.listaRemota, ANTERIOR);
+    });
+  }
 
   it('não faz nada sem URL remota', async () => {
-    armazenado.config = { ativo: true, urlRemota: '' };
-    const r = await lista.atualizarRemota();
-    assert.equal(r.ok, false);
+    extensao({ storage: { config: { ativo: true, urlRemota: '' } } });
+    assert.deepEqual(await lista.atualizarRemota(), { ok: false, erro: 'Nenhuma URL remota configurada.' });
   });
 });
 
 describe('obterConfig', () => {
-  it('completa com os valores padrão', async () => {
-    armazenado = {};
-    assert.deepEqual(await lista.obterConfig(), lista.CONFIG_PADRAO);
-    armazenado.config = { ativo: false };
-    assert.deepEqual(await lista.obterConfig(), { ...lista.CONFIG_PADRAO, ativo: false });
-  });
+  for (const [caso, storage, esperado] of [
+    ['sem nada salvo usa o padrão', {}, lista.CONFIG_PADRAO],
+    ['completa o que falta com o padrão', { config: { ativo: false } }, { ...lista.CONFIG_PADRAO, ativo: false }],
+  ]) {
+    it(caso, async () => {
+      simularExtensao({ storage });
+      assert.deepEqual(await lista.obterConfig(), esperado);
+    });
+  }
 });

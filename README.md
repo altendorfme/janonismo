@@ -28,9 +28,12 @@ Os testes ficam em `test/` e usam só o `node:test`:
 - `aplicar-issue.test.mjs`: leitura das issues de sugestão e o que o script devolve para o workflow.
 - `dados.test.mjs`: `lista.json` válida e sem duplicados, e manifest, plataformas e formulário da issue
   coerentes entre si.
+- `helpers.mjs`: o que os testes compartilham (`simularExtensao`, `corpoIssue`, `contas`…).
 
-Testes marcados como `todo` são bugs conhecidos: aparecem no relatório, mas não quebram o CI. Quando o bug
-for corrigido, tire o `todo`.
+Os casos ficam em tabelas: para cobrir um caso novo, normalmente basta acrescentar uma linha.
+
+Um teste pode ser marcado com `{ todo: 'motivo' }` para registrar um bug conhecido: ele aparece no relatório,
+mas não quebra o CI. Quando o bug for corrigido, tire o `todo`.
 
 O workflow **Pacotes** roda os testes (Node 22 e 24) em todo push e PR, e só depois gera e valida os pacotes.
 Em tags `v*` ele também publica a release. O **Aprovar perfil** roda os testes antes de gravar a
