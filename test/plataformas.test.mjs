@@ -24,11 +24,13 @@ const PERFIS = {
     'https://www.instagram.com/p/abc123/': null,
     'https://www.instagram.com/reel/abc123': null,
     'https://www.instagram.com/explore/': null,
+    'https://www.instagram.com/channel/AbcDef123/': null, // canal de transmissão, não perfil
   },
   tiktok: {
     'https://www.tiktok.com/@fulano': 'fulano',
     'https://www.tiktok.com/@fulano/video/1': 'fulano',
     'https://www.tiktok.com/foryou': null,
+    'https://www.tiktok.com/fulano': null, // sem @ o TikTok responde 404
   },
   youtube: {
     'https://www.youtube.com/@Fulano': 'fulano',
@@ -37,12 +39,24 @@ const PERFIS = {
     'https://www.youtube.com/c/canal': 'canal',
     'https://www.youtube.com/user/canal': 'canal',
     'https://www.youtube.com/watch?v=abc': null,
+    // URL personalizada antiga, que o YouTube ainda serve
+    'https://www.youtube.com/lucaspavanato': 'lucaspavanato',
+    'https://www.youtube.com/lucaspavanato/videos': 'lucaspavanato',
+    'HTTPS://WWW.YOUTUBE.COM/USER/DEPUTADAROSANGELA': 'deputadarosangela',
+    'https://www.youtube.com/results?search_query=fulano': null,
+    'https://www.youtube.com/feed/subscriptions': null,
+    'https://www.youtube.com/shorts/abc123': null,
+    'https://www.youtube.com/playlist?list=PL123': null,
+    'https://www.youtube.com/embed/abc123': null,
+    'https://www.youtube.com/fulano/qualquer-coisa': null,
+    'https://www.youtube.com/': null,
   },
   facebook: {
     'https://www.facebook.com/fulano': 'fulano',
     'https://m.facebook.com/fulano': 'fulano',
     'https://www.facebook.com/profile.php?id=1000123': '1000123',
     'https://www.facebook.com/people/Fulano-de-Tal/1000123/': '1000123',
+    'HTTPS://WWW.FACEBOOK.COM/PROFILE.PHP?ID=1000123': '1000123', // caixa alta, como nos dados do TSE
     'https://www.facebook.com/profile.php': null,
     'https://www.facebook.com/watch/?v=1': null,
     'https://www.facebook.com/groups/algum': null,
@@ -54,6 +68,9 @@ const PERFIS = {
   },
   kwai: {
     'https://www.kwai.com/@fulano': 'fulano',
+    'https://k.kwai.com/u/@Fulano/CQMyLvGu': 'fulano', // link de compartilhamento do app
+    'https://kwai-video.com/u/@Fulano/eChxUiHc': 'fulano',
+    'https://www.kwai.com/u/sem-arroba': null,
   },
   truthsocial: {
     'https://truthsocial.com/@realDonaldTrump': 'realdonaldtrump',

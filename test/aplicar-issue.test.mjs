@@ -48,6 +48,8 @@ describe('extrairPedido', () => {
     { caso: 'nenhuma rede', campos: { Nome: 'F' }, erro: /nenhuma rede/ },
     { caso: 'URL de outra rede', campos: { Nome: 'F', Instagram: 'https://x.com/fulano' }, erro: /é do X \/ Twitter, não do Instagram/ },
     { caso: 'URL que não é perfil', campos: { Nome: 'F', 'X / Twitter': 'https://x.com/home' }, erro: /não reconheci/ },
+    { caso: 'link curto de compartilhamento', campos: { Nome: 'F', Facebook: 'https://www.facebook.com/share/14TGNDDD9TE/' }, erro: /link de compartilhamento: abra ele/ },
+    { caso: 'canal de transmissão do Instagram', campos: { Nome: 'F', Instagram: 'https://www.instagram.com/channel/AbcDef123/' }, erro: /não reconheci/ },
     { caso: 'handle com espaço', campos: { Nome: 'F', 'X / Twitter': 'nome com espaço' }, erro: /não é um usuário válido/ },
     { caso: 'handle fora do formato', campos: { Nome: 'F', 'X / Twitter': 'muito_comprido_para_o_x' }, erro: /não é um usuário válido/ },
     { caso: 'página reservada', campos: { Nome: 'F', Instagram: 'explore' }, erro: /é uma página do Instagram/ },
