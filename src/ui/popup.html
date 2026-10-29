@@ -11,6 +11,7 @@
     .acoes { display: flex; gap: 8px; }
     .acoes button { flex: 1; }
     #aviso-permissao { display: none; flex-direction: column; gap: 8px; border: 1px solid var(--vermelho); border-radius: 10px; padding: 10px; }
+    .sugerir { margin: 0; border-top: 1px solid var(--borda); padding-top: 12px; }
   </style>
 </head>
 <body>
@@ -38,6 +39,9 @@
     <button id="opcoes">Configurações</button>
   </div>
   <p class="suave" id="status" style="margin:0" role="status"></p>
+
+  <p class="sugerir suave">Falta alguém na lista?
+    <a id="sugerir" href="https://github.com/janonismo/browser/issues" target="_blank" rel="noopener">Sugira um perfil</a></p>
 
   <script src="../shared/plataformas.js"></script>
   <script src="../shared/lista.js"></script>

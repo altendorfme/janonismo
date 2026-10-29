@@ -32,6 +32,12 @@ $('atualizar').addEventListener('click', async () => {
 
 $('opcoes').addEventListener('click', () => chrome.runtime.openOptionsPage());
 
+$('sugerir').addEventListener('click', (e) => {
+  e.preventDefault();
+  chrome.tabs.create({ url: e.currentTarget.href });
+  window.close();
+});
+
 $('conceder').addEventListener('click', async () => {
   await chrome.permissions.request({ origins: origens });
   render();
