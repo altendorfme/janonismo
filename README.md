@@ -49,8 +49,10 @@ e o Dependabot abre PRs mensais para atualizá-las.
 
 ## A lista
 
-Lista efetiva = `src/data/lista.json` (embutida) + lista remota + perfis que o usuário adicionou −
-perfis que o usuário desmarcou. Tudo é editável em *Configurações*.
+Lista efetiva = lista remota (ou `src/data/lista.json`, a embutida, enquanto nenhuma lista remota foi baixada)
+\+ perfis que o usuário adicionou − perfis que o usuário desmarcou. Tudo é editável em *Configurações*.
+Como a lista remota substitui a embutida, tirar um perfil do `lista.json` tira ele de todas as extensões
+no próximo download, sem precisar publicar uma versão nova.
 
 ```json
 {

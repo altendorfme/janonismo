@@ -29,12 +29,21 @@ describe('recalcular', () => {
   const CASOS = [
     { caso: 'só a embutida', indice: BASE },
     {
-      caso: 'soma a remota, e a embutida ganha quando as duas têm a mesma conta',
-      storage: { listaRemota: { perfis: [{ nome: 'Remoto', x: ['fulano', 'outro'] }] } },
-      indice: { ...BASE, 'x:outro': 'Remoto (remota)' },
+      caso: 'a remota substitui a embutida, inclusive para tirar perfis',
+      storage: { listaRemota: { perfis: [{ nome: 'Remoto', x: ['outro'] }] } },
+      indice: { 'x:outro': 'Remoto (remota)' },
     },
     {
-      caso: 'ignora lista remota salva com formato inválido',
+      caso: 'extras e removidos do usuário valem também sobre a remota',
+      storage: {
+        listaRemota: { perfis: [{ nome: 'Remoto', x: ['outro', 'tirado'] }] },
+        extras: [{ plataforma: 'tiktok', handle: 'novo', nome: 'Novo' }],
+        removidos: ['x:tirado'],
+      },
+      indice: { 'x:outro': 'Remoto (remota)', 'tiktok:novo': 'Novo (usuario)' },
+    },
+    {
+      caso: 'usa a embutida se a remota salva tiver formato inválido',
       storage: { listaRemota: { perfis: 'quebrado' } },
       indice: BASE,
     },
@@ -75,7 +84,7 @@ describe('atualizarRemota', () => {
     assert.deepEqual(await lista.atualizarRemota(), { ok: true, total: 1 });
     assert.equal(dados.remotaErro, null);
     assert.equal(typeof dados.remotaAtualizadaEm, 'number');
-    assert.equal(resumir(dados.indice)['x:remoto'], 'Remoto (remota)');
+    assert.deepEqual(resumir(dados.indice), { 'x:remoto': 'Remoto (remota)' });
   });
 
   const ANTERIOR = { perfis: [{ nome: 'Antigo', x: ['antigo'] }] };
