@@ -15,6 +15,18 @@ async function inicializar() {
   }
 }
 
+// Os incrementos ficam numa fila: com get + set soltos, dois avisos seguidos liam o mesmo valor e um se perdia.
+let fila = Promise.resolve();
+function contar() {
+  fila = fila
+    .then(async () => {
+      const { contador = 0 } = await chrome.storage.local.get('contador');
+      await chrome.storage.local.set({ contador: contador + 1 });
+    })
+    .catch(() => {});
+  return fila;
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
   await inicializar();
   lista.atualizarRemota();
@@ -31,14 +43,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, responder) => {
     lista.atualizarRemota().then(responder);
     return true;
   }
-  if (msg?.tipo === 'recalcular') {
-    lista.recalcular().then((indice) => responder({ total: Object.keys(indice).length }));
-    return true;
-  }
   if (msg?.tipo === 'contar') {
-    chrome.storage.local.get('contador').then(({ contador = 0 }) =>
-      chrome.storage.local.set({ contador: contador + 1 })
-    );
+    contar().then(() => responder());
+    return true;
   }
   return false;
 });

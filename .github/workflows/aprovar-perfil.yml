@@ -20,9 +20,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       ISSUE_NUMBER: ${{ github.event.issue.number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
 
@@ -32,7 +32,21 @@ jobs:
           ISSUE_BODY: ${{ github.event.issue.body }}
           RESPOSTA: ${{ runner.temp }}/resposta.md
 
+      - name: Validar lista
+        id: validar
+        if: steps.aplicar.outputs.resultado == 'ok'
+        run: |
+          npm test || {
+            printf '%s\n' \
+              "❌ A lista ficou inválida depois de aplicar #$ISSUE_NUMBER, então nada foi gravado." \
+              '' \
+              'Veja o log da Action para os detalhes, corrija a issue e aplique o rótulo `aprovado` de novo.' \
+              > "$RUNNER_TEMP/resposta.md"
+            exit 1
+          }
+
       - name: Gravar lista
+        id: gravar
         if: steps.aplicar.outputs.resultado == 'ok'
         env:
           NOME: ${{ steps.aplicar.outputs.nome }}
@@ -45,18 +59,21 @@ jobs:
           git push
 
       - name: Responder e fechar
+        id: responder
         if: steps.aplicar.outputs.resultado == 'ok' || steps.aplicar.outputs.resultado == 'sem-mudanca'
         run: |
           gh issue comment "$ISSUE_NUMBER" --body-file "$RUNNER_TEMP/resposta.md"
           gh issue close "$ISSUE_NUMBER" --reason completed
 
       - name: Avisar erro
-        if: always() && steps.aplicar.outputs.resultado != 'ok' && steps.aplicar.outputs.resultado != 'sem-mudanca'
+        if: always() && (failure() || (steps.aplicar.outputs.resultado != 'ok' && steps.aplicar.outputs.resultado != 'sem-mudanca'))
+        env:
+          GRAVAR: ${{ steps.gravar.outcome }}
+          RESPONDER: ${{ steps.responder.outcome }}
         run: |
-          if [ -f "$RUNNER_TEMP/resposta.md" ]; then
-            gh issue comment "$ISSUE_NUMBER" --body-file "$RUNNER_TEMP/resposta.md"
-          else
-            gh issue comment "$ISSUE_NUMBER" --body "❌ Falha inesperada ao aplicar a issue. Veja o log da Action."
+          if [ "$GRAVAR" = failure ] || [ "$RESPONDER" = failure ] || [ ! -f "$RUNNER_TEMP/resposta.md" ]; then
+            echo '❌ Falha inesperada ao aplicar a issue. Veja o log da Action.' > "$RUNNER_TEMP/resposta.md"
           fi
+          gh issue comment "$ISSUE_NUMBER" --body-file "$RUNNER_TEMP/resposta.md"
           gh issue edit "$ISSUE_NUMBER" --remove-label aprovado
           exit 1

@@ -64,7 +64,7 @@ $('salvar-url').addEventListener('click', async () => {
     return;
   }
   $('status-remota').textContent = 'Baixando…';
-  const r = await lista.atualizarRemota();
+  const r = await chrome.runtime.sendMessage({ tipo: 'atualizarRemota' }).catch((e) => ({ ok: false, erro: e.message }));
   await renderTudo();
   if (r.ok) $('status-remota').textContent = `Lista remota carregada: ${r.total} perfis.`;
 });
