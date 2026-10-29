@@ -11,11 +11,31 @@
 | Comando | O que faz |
 |---|---|
 | `npm run build` | gera `dist/chrome`, `dist/firefox` e os `.zip` para as lojas |
+| `npm test` | roda os testes (`node --test`, sem dependências) |
 | `npm run lint` | build + `web-ext lint` do pacote Firefox |
 | `npm run firefox` | abre um Firefox temporário com a extensão |
 
 Sem dependências: só precisa de Node 22+. Com a variável `VERSAO` (ex.: `VERSAO=1.2.0 npm run build`)
 o build usa essa versão no manifest no lugar da do `src/manifest.base.json`.
+
+### Testes e CI
+
+Os testes ficam em `test/` e usam só o `node:test`:
+
+- `plataformas.test.mjs`: quais URLs viram perfil (e quais não viram) em cada rede.
+- `lista.test.mjs`: junção da lista embutida, da remota, dos extras e dos removidos, e como a extensão se
+  comporta quando o download da lista remota falha (com um `chrome.storage` simulado).
+- `aplicar-issue.test.mjs`: leitura das issues de sugestão e o que o script devolve para o workflow.
+- `dados.test.mjs`: `lista.json` válida e sem duplicados, e manifest, plataformas e formulário da issue
+  coerentes entre si.
+
+Testes marcados como `todo` são bugs conhecidos: aparecem no relatório, mas não quebram o CI. Quando o bug
+for corrigido, tire o `todo`.
+
+O workflow **Pacotes** roda os testes (Node 22 e 24) em todo push e PR, e só depois gera e valida os pacotes.
+Em tags `v*` ele também publica a release. O **Aprovar perfil** roda os testes antes de gravar a
+`lista.json`, então uma sugestão que deixaria a lista inválida não entra. As actions estão fixadas por SHA,
+e o Dependabot abre PRs mensais para atualizá-las.
 
 ## Instalar em modo desenvolvedor
 
