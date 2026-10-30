@@ -30,12 +30,14 @@
     return { ...CONFIG_PADRAO, ...config };
   }
 
+  // A lista remota é a versão mais nova da lista (por padrão, o próprio src/data/lista.json publicado na
+  // Vercel), então ela substitui a embutida, inclusive para tirar perfis. A embutida só vale enquanto não
+  // houver uma lista remota válida baixada.
   async function indiceBase() {
-    const embutida = await carregarEmbutida();
     const { listaRemota } = await chrome.storage.local.get('listaRemota');
     const indice = {};
-    indexar(embutida, 'embutida', indice);
     if (listaValida(listaRemota)) indexar(listaRemota, 'remota', indice);
+    else indexar(await carregarEmbutida(), 'embutida', indice);
     return indice;
   }
 

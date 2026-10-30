@@ -42,12 +42,32 @@
     avaliar();
   }
 
+  // As redes são SPAs: trocam de perfil com pushState, sem recarregar a página.
+  function observarUrl() {
+    // Navigation API (Chrome 102+, Firefox 147+): avisa a cada pushState, replaceState, voltar/avançar e
+    // troca de #hash, inclusive quando quem navega é o script da página.
+    if (globalThis.navigation?.addEventListener) {
+      navigation.addEventListener('currententrychange', verificarUrl);
+      return;
+    }
+    // Sem ela, o content script não fica sabendo do pushState da página, então resta olhar a URL de tempos
+    // em tempos, e só enquanto a aba está visível.
+    let intervalo = null;
+    const ajustar = () => {
+      clearInterval(intervalo);
+      intervalo = document.hidden ? null : setInterval(verificarUrl, 500);
+      verificarUrl();
+    };
+    addEventListener('popstate', verificarUrl);
+    document.addEventListener('visibilitychange', ajustar);
+    ajustar();
+  }
+
   chrome.storage.local.get(['indice', 'config']).then((dados) => {
     indice = dados.indice || {};
     config = { ...config, ...dados.config };
     verificarUrl();
-    setInterval(verificarUrl, 500);
-    addEventListener('popstate', verificarUrl);
+    observarUrl();
   });
 
   chrome.storage.onChanged.addListener((mudancas, area) => {

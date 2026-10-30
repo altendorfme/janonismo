@@ -6,16 +6,52 @@
 
 **[Instalar no Chrome](https://chromewebstore.google.com/detail/janonismo-%E2%80%94-n%C3%A3o-engaje-a/ocoaoegendhaggfciobaddpffdlaanog)**
 
+## Como funciona
+
+Quando você abre o perfil de alguém da lista numa das redes suportadas, a extensão cobre a página com um aviso
+em tela cheia e um botão para voltar:
+
+![Aviso do Janonismo cobrindo o perfil de Jair Bolsonaro no X](docs/print-x.webp)
+
+O popup mostra se a proteção está ligada, quantas vezes o aviso já apareceu e quantos perfis há na lista:
+
+![Popup do Janonismo aberto sobre o canal de Jair Bolsonaro no YouTube](docs/print-popup.webp)
+
 ## Build
 
 | Comando | O que faz |
 |---|---|
 | `npm run build` | gera `dist/chrome`, `dist/firefox` e os `.zip` para as lojas |
+| `npm test` | roda os testes (`node --test`, sem dependências) |
 | `npm run lint` | build + `web-ext lint` do pacote Firefox |
 | `npm run firefox` | abre um Firefox temporário com a extensão |
 
 Sem dependências: só precisa de Node 22+. Com a variável `VERSAO` (ex.: `VERSAO=1.2.0 npm run build`)
 o build usa essa versão no manifest no lugar da do `src/manifest.base.json`.
+
+### Testes e CI
+
+Os testes ficam em `test/` e usam só o `node:test`:
+
+- `plataformas.test.mjs`: quais URLs viram perfil (e quais não viram) em cada rede.
+- `lista.test.mjs`: junção da lista embutida, da remota, dos extras e dos removidos, e como a extensão se
+  comporta quando o download da lista remota falha (com um `chrome.storage` simulado).
+- `background.test.mjs`: mensagens (download pelo background, contador sem perder avisos), instalação e alarme.
+- `detector.test.mjs`: como o content script percebe a troca de perfil, com e sem Navigation API (timers falsos).
+- `aplicar-issue.test.mjs`: leitura das issues de sugestão e o que o script devolve para o workflow.
+- `dados.test.mjs`: `lista.json` válida e sem duplicados, e manifest, plataformas e formulário da issue
+  coerentes entre si.
+- `helpers.mjs`: o que os testes compartilham (`simularExtensao`, `corpoIssue`, `contas`…).
+
+Os casos ficam em tabelas: para cobrir um caso novo, normalmente basta acrescentar uma linha.
+
+Um teste pode ser marcado com `{ todo: 'motivo' }` para registrar um bug conhecido: ele aparece no relatório,
+mas não quebra o CI. Quando o bug for corrigido, tire o `todo`.
+
+O workflow **Pacotes** roda os testes (Node 22 e 24) em todo push e PR, e só depois gera e valida os pacotes.
+Em tags `v*` ele também publica a release. O **Aprovar perfil** roda os testes antes de gravar a
+`lista.json`, então uma sugestão que deixaria a lista inválida não entra. As actions estão fixadas por SHA,
+e o Dependabot abre PRs mensais para atualizá-las.
 
 ## Instalar em modo desenvolvedor
 
@@ -26,8 +62,10 @@ o build usa essa versão no manifest no lugar da do `src/manifest.base.json`.
 
 ## A lista
 
-Lista efetiva = `src/data/lista.json` (embutida) + lista remota + perfis que o usuário adicionou −
-perfis que o usuário desmarcou. Tudo é editável em *Configurações*.
+Lista efetiva = lista remota (ou `src/data/lista.json`, a embutida, enquanto nenhuma lista remota foi baixada)
+\+ perfis que o usuário adicionou − perfis que o usuário desmarcou. Tudo é editável em *Configurações*.
+Como a lista remota substitui a embutida, tirar um perfil do `lista.json` tira ele de todas as extensões
+no próximo download, sem precisar publicar uma versão nova.
 
 ```json
 {

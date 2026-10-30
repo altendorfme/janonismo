@@ -1,8 +1,8 @@
-const { lista } = globalThis.Janonismo;
+const { lista, permissoes } = globalThis.Janonismo;
 const $ = (id) => document.getElementById(id);
 
 const manifest = chrome.runtime.getManifest();
-const origens = [...manifest.content_scripts.flatMap((cs) => cs.matches), ...manifest.host_permissions];
+const origens = permissoes.origensNecessarias(manifest);
 
 async function render() {
   const config = await lista.obterConfig();
@@ -12,7 +12,7 @@ async function render() {
   $('total').textContent = `${Object.keys(indice).length} perfis na lista.`;
   $('atualizar').hidden = !config.urlRemota;
 
-  const temPermissao = await chrome.permissions.contains({ origins: origens });
+  const temPermissao = !(await permissoes.faltamPermissoes(origens)).length;
   $('aviso-permissao').style.display = temPermissao ? 'none' : 'flex';
 }
 
@@ -24,7 +24,8 @@ $('ativo').addEventListener('change', async (e) => {
 $('atualizar').addEventListener('click', async () => {
   $('atualizar').disabled = true;
   $('status').textContent = 'Baixando…';
-  const r = await lista.atualizarRemota();
+  // Pelo background, para o download terminar mesmo se o popup fechar.
+  const r = await chrome.runtime.sendMessage({ tipo: 'atualizarRemota' }).catch((e) => ({ ok: false, erro: e.message }));
   $('status').textContent = r.ok ? `Lista atualizada (${r.total} perfis remotos).` : `Falhou: ${r.erro}`;
   $('atualizar').disabled = false;
   render();
