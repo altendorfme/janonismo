@@ -21,11 +21,15 @@ export function lerCampos(corpo) {
   return campos;
 }
 
-function interpretarHandle(plataforma, bruto) {
+export function interpretarHandle(plataforma, bruto) {
   const texto = bruto.trim();
   if (/^https?:\/\//i.test(texto)) {
     const perfil = extrairPerfil(texto);
-    if (!perfil) throw new Error(`não reconheci a URL \`${texto}\` como perfil.`);
+    if (!perfil) {
+      // Links curtos de compartilhamento (facebook.com/share/…) só viram perfil depois de abertos.
+      const dica = /\/share\//i.test(texto) ? ' Parece um link de compartilhamento: abra ele e cole o endereço do perfil.' : '';
+      throw new Error(`não reconheci a URL \`${texto}\` como perfil.${dica}`);
+    }
     if (perfil.plataforma !== plataforma) {
       throw new Error(`a URL \`${texto}\` é do ${PLATAFORMAS[perfil.plataforma].nome}, não do ${PLATAFORMAS[plataforma].nome}.`);
     }
