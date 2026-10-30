@@ -6,6 +6,17 @@
 
 **[Instalar no Chrome](https://chromewebstore.google.com/detail/janonismo-%E2%80%94-n%C3%A3o-engaje-a/ocoaoegendhaggfciobaddpffdlaanog)**
 
+## Como funciona
+
+Quando você abre o perfil de alguém da lista numa das redes suportadas, a extensão cobre a página com um aviso
+em tela cheia e um botão para voltar:
+
+![Aviso do Janonismo cobrindo o perfil de Jair Bolsonaro no X](docs/print-x.webp)
+
+O popup mostra se a proteção está ligada, quantas vezes o aviso já apareceu e quantos perfis há na lista:
+
+![Popup do Janonismo aberto sobre o canal de Jair Bolsonaro no YouTube](docs/print-popup.webp)
+
 ## Build
 
 | Comando | O que faz |
