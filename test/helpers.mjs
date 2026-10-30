@@ -4,8 +4,9 @@ import { join } from 'node:path';
 
 await import('../src/shared/plataformas.js');
 await import('../src/shared/lista.js');
+await import('../src/shared/permissoes.js');
 
-export const { PLATAFORMAS, extrairPerfil, normalizarHandle, chave, lista } = globalThis.Janonismo;
+export const { PLATAFORMAS, extrairPerfil, normalizarHandle, chave, lista, permissoes } = globalThis.Janonismo;
 
 export const RAIZ = join(import.meta.dirname, '..');
 export const ler = (...caminho) => readFileSync(join(RAIZ, ...caminho), 'utf8');
@@ -39,8 +40,10 @@ export function corpoIssue(campos) {
  * Devolve o storage, que pode ser inspecionado depois. Os ouvintes registrados ficam em
  * chrome.<api>.<evento>.ouvintes, os alarmes criados em chrome.alarms.criados e as mensagens enviadas
  * em chrome.runtime.enviadas.
+ * - permissoes: { concedidas: origens que getAll() lista, contem(origens): resposta do contains() }
  */
-export function simularExtensao({ storage = {}, rede = {} } = {}) {
+export function simularExtensao({ storage = {}, rede = {}, permissoes = {} } = {}) {
+  const { concedidas = [], contem = () => false } = permissoes;
   const dados = structuredClone(storage);
   const criados = {};
   const enviadas = [];
@@ -54,6 +57,10 @@ export function simularExtensao({ storage = {}, rede = {} } = {}) {
     if (Object.keys(mudancas).length) onChanged.ouvintes.forEach((ouvinte) => ouvinte(structuredClone(mudancas), 'local'));
   };
   globalThis.chrome = {
+    permissions: {
+      getAll: async () => ({ origins: [...concedidas] }),
+      contains: async ({ origins }) => contem(origins),
+    },
     runtime: {
       getURL: (caminho) => `ext://${caminho}`,
       onInstalled: evento(),
